@@ -17,11 +17,11 @@ int error[2]= {0};
 float P_error[2]={0};
 float I_error[2]={0};
 float D_error[2]={0};
-int target[2] = {0};
+float target[2] = {0};
 //float kp=0.85;
-static float kp=3;
-static float ki=0.07;
-static float kd=0.018;
+static float kp=4;
+static float ki=1;
+static float kd=0;
 
 //********* time and speed
 double Speed[2]={0};
@@ -54,9 +54,10 @@ void setup() {
       pinMode(left_motor[i],OUTPUT);
       pinMode(right_motor[i],OUTPUT);
   }
+  /*
   attachInterrupt(digitalPinToInterrupt(LEFT_INTERRUPT_0), plus_left, RISING);
   attachInterrupt(digitalPinToInterrupt(RIGHT_INTERRUPT_0), plus_right, RISING);
- 
+ */
   //for Serial communication
   
 
@@ -67,12 +68,6 @@ void setup() {
 }
 
 void loop() {
-
-  // hand write your target
-  if(Serial.available()){
-    target[0]=Serial.parseInt();
-    Serial.println(target[0]);
-    }
  
   //for imu update
   static uint32_t prev_ms = millis();
@@ -80,35 +75,34 @@ void loop() {
       mpu.update();
       //mpu.print();
       pitch=mpu.getPitch();
-      target[0]=counter[0]+pitch*550.0/360.0;
-      target[1]=counter[1]+pitch*550.0/360.0;
+      target[0]=pitch;
+      target[1]=pitch;
       prev_ms = millis();
       mpu_counter++;
   }
 
   //motor out put
   for(int i =0;i<2;i++){
-    P_error[i]=P_E(counter[i],target[i],550); //pose now , target ,whole role
-    error[i] = kp*P_error[i];//+ki*I_error+kd*D_error;
+    P_error[i]=P_E(target[i]); //pose now , target ,whole role
+    error[i] = kp*P_error[i]+ki*I_error[i]+kd*D_error[i];//+ki*I_error+kd*D_error;
   }
   //left motor
   digitalWrite(left_motor[0],error[0]<0?0:1);
   digitalWrite(left_motor[1],error[0]<0?1:0);
-  if(abs(error[0])>255)error[0]=255;
+  if((abs(error[0])+50)>255)error[0]=255;
   analogWrite(left_motor[2],abs(error[0]));
 
   //right motor
   digitalWrite(right_motor[0],error[1]<0?0:1);
   digitalWrite(right_motor[1],error[1]<0?1:0);
-  if(abs(error[1])>255)error[1]=255;
+  if((abs(error[1])+50)>255)error[1]=255;
   analogWrite(right_motor[2],abs(error[1]));
-  
   //out put by Serial
    if(mpu_counter>20){
         Serial.print("pitch (y-right (east))    : ");
         Serial.println(mpu.getPitch());
         Serial.println(target[0]);
-        Serial.println(error[0]);
+        Serial.println((abs(error[1])+50));
         //Serial.print("right counter:");
         //Serial.println(counter[0]);
         //Serial.print("left counter:");
@@ -124,21 +118,6 @@ void loop() {
 
 
 //      motor  encoder
-void plus_left() {
-  if(digitalRead(4)==HIGH)
-    counter[0]++;
-  else
-    counter[0]--;
-}
-void plus_right() {
-  if(digitalRead(5)==HIGH)
-    counter[1]++;
-  else
-    counter[1]--;
-}
-
-
-//      get motor speed
 void timerIsr()
 {
     for(int i =0;i<2;i++){
@@ -151,21 +130,6 @@ void timerIsr()
 }
 
 // get p error
-int P_E(int pose , int target , int scaler){
-   if(pose>=0)                                  //determine the pose in range 0 to scaler
-     pose = pose%scaler;
-    else 
-     pose = pose%scaler+scaler;
-   if(target>=0)
-    target = target%scaler;
-    else 
-    target = target%scaler+scaler;
-     
-    int error = target-pose;                    
-    if(error<=scaler/2&&error>-scaler/2)        //make sure the error can turn right the most effeciently
-      return(error);
-    else if(error>scaler/2&&error<scaler)
-      return(error-scaler);
-    else if(error>-scaler)
-      return(error+scaler);
+int P_E(float target ){
+      return(target);
 }
