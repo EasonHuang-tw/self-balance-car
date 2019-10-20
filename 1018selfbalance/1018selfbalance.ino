@@ -19,9 +19,9 @@ float I_error[2]={0};
 float D_error[2]={0};
 float target[2] = {0};
 //float kp=0.85;
-static float kp=4;
-static float ki=1;
-static float kd=0;
+static float kp=3.2;
+static float ki=0.05;
+static float kd=0.4;
 
 //********* time and speed
 double Speed[2]={0};
@@ -75,8 +75,8 @@ void loop() {
       mpu.update();
       //mpu.print();
       pitch=mpu.getPitch();
-      target[0]=pitch;
-      target[1]=pitch;
+      target[0]=pitch-1;
+      target[1]=pitch-1;
       prev_ms = millis();
       mpu_counter++;
   }
@@ -86,23 +86,29 @@ void loop() {
     P_error[i]=P_E(target[i]); //pose now , target ,whole role
     error[i] = kp*P_error[i]+ki*I_error[i]+kd*D_error[i];//+ki*I_error+kd*D_error;
   }
+  if(error[0]>0)error[0]+=60;
+    else if(error[0]<0)error[0]-=60;
+    if(error[1]>0)error[1]+=70;
+    else if(error[1]<0)error[1]-=70;
+   
   //left motor
   digitalWrite(left_motor[0],error[0]<0?0:1);
   digitalWrite(left_motor[1],error[0]<0?1:0);
-  if((abs(error[0])+50)>255)error[0]=255;
+  if(abs(error[0])>255)error[0]=255;
   analogWrite(left_motor[2],abs(error[0]));
 
   //right motor
   digitalWrite(right_motor[0],error[1]<0?0:1);
   digitalWrite(right_motor[1],error[1]<0?1:0);
-  if((abs(error[1])+50)>255)error[1]=255;
+  if(abs(error[1])>255)error[1]=255;
   analogWrite(right_motor[2],abs(error[1]));
+  
   //out put by Serial
    if(mpu_counter>20){
         Serial.print("pitch (y-right (east))    : ");
         Serial.println(mpu.getPitch());
-        Serial.println(target[0]);
-        Serial.println((abs(error[1])+50));
+        Serial.println(error[1]);
+        Serial.println(error[0]);
         //Serial.print("right counter:");
         //Serial.println(counter[0]);
         //Serial.print("left counter:");
