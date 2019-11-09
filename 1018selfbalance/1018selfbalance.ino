@@ -7,7 +7,7 @@
 #define RIGHT_INTERRUPT_1 5 
 //*********  motor control *************
 int counter[2] ={0,0}; //left ,right step
-int left_motor[3]={6,7,8};    //pin8 for pwm
+int left_motor[3]={8,7,6};    //pin8 for pwm
 int right_motor[3]={9,10,11}; //pin11 for pwm
 
 //*********  error with target *********
@@ -19,9 +19,9 @@ float I_error[2]={0};
 float D_error[2]={0};
 float target[2] = {0};
 //float kp=0.85;
-static float kp=3.2;
-static float ki=0.05;
-static float kd=0.4;
+static float kp=9;
+static float ki=0.075;
+static float kd=10.325;
 
 //********* time and speed
 double Speed[2]={0};
@@ -74,9 +74,9 @@ void loop() {
   if ((millis() - prev_ms) > 16){
       mpu.update();
       //mpu.print();
-      pitch=mpu.getPitch();
-      target[0]=pitch-1;
-      target[1]=pitch-1;
+      pitch=mpu.getPitch()-1;
+      target[0]=pitch;
+      target[1]=pitch;
       prev_ms = millis();
       mpu_counter++;
   }
@@ -85,28 +85,33 @@ void loop() {
   for(int i =0;i<2;i++){
     P_error[i]=P_E(target[i]); //pose now , target ,whole role
     error[i] = kp*P_error[i]+ki*I_error[i]+kd*D_error[i];//+ki*I_error+kd*D_error;
+    if(error[i]>150)
+      error[i]=150+(error[i]-150.)*0.75;
+    else if(error[i]<-125)
+      error[i]=-150+(error[i]+150.)*0.75;
   }
+  /*
   if(error[0]>0)error[0]+=60;
     else if(error[0]<0)error[0]-=60;
-    if(error[1]>0)error[1]+=70;
-    else if(error[1]<0)error[1]-=70;
-   
+    if(error[1]>0)error[1]+=60;
+    else if(error[1]<0)error[1]-=60;
+   */
   //left motor
   digitalWrite(left_motor[0],error[0]<0?0:1);
   digitalWrite(left_motor[1],error[0]<0?1:0);
   if(abs(error[0])>255)error[0]=255;
   analogWrite(left_motor[2],abs(error[0]));
-
+  //analogWrite(left_motor[2],0);
   //right motor
   digitalWrite(right_motor[0],error[1]<0?0:1);
   digitalWrite(right_motor[1],error[1]<0?1:0);
   if(abs(error[1])>255)error[1]=255;
   analogWrite(right_motor[2],abs(error[1]));
-  
+  //analogWrite(right_motor[2],0);
   //out put by Serial
    if(mpu_counter>20){
         Serial.print("pitch (y-right (east))    : ");
-        Serial.println(mpu.getPitch());
+        Serial.println(mpu.getPitch()-1);
         Serial.println(error[1]);
         Serial.println(error[0]);
         //Serial.print("right counter:");
@@ -131,6 +136,7 @@ void timerIsr()
       last_counter[i] = counter[i];
       D_error[i]=P_error[i]-last_P[i];
       last_P[i]=P_error[i];
+     // if(I_error[i]<50)
       I_error[i] = I_error[i]+P_error[i];
     }
 }
